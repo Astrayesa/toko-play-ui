@@ -2,7 +2,10 @@
 import { Typography, Toolbar, AppBar, Drawer, Divider, Box, List, ListItem, ListItemText, ListItemButton } from '@mui/material'
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
+import YoutubeEmbed from '@/components/YoutubeEmbed';
+import CommentForm from '@/components/CommentForm';
 
+// use fe server for fetching data from backend
 // export async function getServerSideProps({ params }) {
 //     const { id } = params;
 //     const response = await fetch(`http://127.0.0.1:3001/videos/${id}`);
@@ -13,17 +16,15 @@ import { useEffect, useState } from "react";
 export default function Details() {
     const router = useRouter();
     const [data, setData] = useState(null);
-    const [comments, setComments] = useState(null);
+    const [comments, setComments] = useState([]);
     const [videoId, setVideoId] = useState(null);
     useEffect(() => {
         if (router.isReady) {
-
             fetch(`http://127.0.0.1:3001/videos/${router.query.id}`)
                 .then((response) => response.json())
                 .then((response) => {
                     setData(response);
                     setVideoId(id_extractor(response.url));
-                    console.log(videoId);
                 })
                 .catch(err => console.log("Gagal fetch detail video: ", err))
             fetch(`http://127.0.0.1:3001/comments/${router.query.id}`)
@@ -34,6 +35,18 @@ export default function Details() {
                 .catch(err => console.log("Gagal fetch comments: ", err))
         }
     }, [router.isReady])
+
+    const [postSubmit, setPostSubmit] = useState(false);
+    useEffect(() => {
+        fetch(`http://127.0.0.1:3001/comments/${router.query.id}`)
+            .then((response) => response.json())
+            .then((response) => {
+                setComments(response);
+            })
+            .catch(err => console.log("Gagal fetch comments: ", err))
+        setPostSubmit(false);
+    }, [postSubmit]);
+
 
     const drawerWidth = 240;
     return <Box sx={{ display: 'flex' }}>
@@ -65,7 +78,7 @@ export default function Details() {
             <Divider />
             <List>
                 {
-                    data?.products?.map(
+                    data?.products.map(
                         (product) =>
                             <ListItem key={product._id} disablePadding>
                                 <ListItemButton href={product.url} target="_blank">
@@ -100,24 +113,30 @@ export default function Details() {
         >
             <Toolbar >
                 <Typography variant="h6" color="inherit" noWrap>
-                    Comment
+                    Comments
                 </Typography>
-                {/* form to add comment */}
-
             </Toolbar>
             <Divider />
-            <List>
+            <List sx={
                 {
-                    comments ? comments.map(
+                    height: '70%',
+                    overflow: 'auto'
+                }
+            }
+            >
+                {
+                    Array.isArray(comments) ? comments?.map(
                         (comment) =>
                             <ListItem key={comment._id} disablePadding divider >
                                 <ListItemButton >
                                     <ListItemText primary={comment.comment} secondary={comment.username} />
                                 </ListItemButton>
                             </ListItem>
-                    ) : <h1>Belum ada komentar</h1>
+                    ) : null
                 }
             </List>
+            {/* form to add comment */}
+            <CommentForm video_id={router.query.id} setPostSubmit={setPostSubmit} />
         </Drawer>
     </Box>
 }
@@ -128,17 +147,3 @@ function id_extractor(url) {
     return (match && match[7].length == 11) ? match[7] : false;
 
 }
-
-const YoutubeEmbed = ({ embedId }) => (
-    <div className="video-responsive">
-        <iframe
-            width="853"
-            height="480"
-            src={`https://www.youtube.com/embed/${embedId}`}
-            frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            title="Embedded youtube"
-        />
-    </div>
-);
